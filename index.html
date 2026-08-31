@@ -312,8 +312,8 @@
   function getMaxTotal(){
     const raw = familyInput.value.trim();
     const familyCount = raw === '' ? 0 : parseInt(raw, 10);
-    if (isNaN(familyCount) || familyCount < 0) return 1;
-    return 1 + familyCount; // 본인 1명 + 동반 가족 수
+    if (isNaN(familyCount) || familyCount < 0) return 0;
+    return (1 + familyCount) - 1; // 신청자 + 동반 가족 수 - 1
   }
 
   function totalSelected(){
@@ -441,7 +441,7 @@
         chosen.forEach(([id, n]) => { choicesMap[id] = n; });
         tx.set(submissionRef, {
           name,
-          familyCount: maxTotal - 1,
+          familyCount: maxTotal,
           totalPeople: maxTotal,
           choices: choicesMap,
           submittedAt: serverTimestamp()
