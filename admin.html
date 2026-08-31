@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>이용쿠폰 신청 관리</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
+<style>
+  :root{
+    --bg:#F6F8FA; --surface:#FFFFFF; --ink:#16233D; --muted:#6B7686;
+    --line:#E4E9EF; --accent:#FF6B35; --teal:#0E7C86; --teal-bg:#E5F3F3;
+    --danger:#D8434F; --danger-bg:#FCEAEC;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Pretendard',-apple-system,BlinkMacSystemFont,sans-serif;background:var(--bg);color:var(--ink);}
+  .wrap{max-width:880px;margin:0 auto;padding:32px 20px 80px;}
+  h1{font-size:21px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:13.5px;margin:0 0 28px;}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px;margin-bottom:22px;}
+  .card h2{font-size:16px;margin:0 0 16px;}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;}
+  th, td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--line);}
+  th{color:var(--muted);font-weight:600;font-size:12.5px;}
+  input[type=text], input[type=number]{
+    font-family:inherit;font-size:13.5px;padding:7px 8px;border:1px solid var(--line);
+    border-radius:8px;background:var(--bg);color:var(--ink);width:100%;
+  }
+  .row-actions{display:flex;gap:8px;}
+  button{
+    font-family:inherit;font-size:13px;font-weight:600;padding:8px 14px;
+    border-radius:8px;border:1px solid var(--line);background:var(--surface);
+    color:var(--ink);cursor:pointer;
+  }
+  button.primary{background:var(--accent);border-color:var(--accent);color:#fff;}
+  button.danger{color:var(--danger);border-color:var(--danger-bg);}
+  button:disabled{opacity:0.4;cursor:not-allowed;}
+  .add-row{display:flex;gap:8px;margin-top:14px;}
+  .add-row input{flex:1;}
+  .remain{font-weight:700;}
+  .remain.low{color:var(--danger);}
+  .pill{
+    display:inline-block;background:var(--teal-bg);color:var(--teal);
+    font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px;margin-right:6px;margin-bottom:4px;
+  }
+  .toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
+  .gate{max-width:360px;margin:80px auto;padding:28px;background:var(--surface);border:1px solid var(--line);border-radius:14px;text-align:center;}
+  .gate input{margin:14px 0;}
+  .empty{color:var(--muted);font-size:13.5px;padding:16px 0;}
+</style>
+</head>
+<body>
+
+<div class="gate" id="gate">
+  <h2 style="margin:0 0 6px;font-size:17px;">관리자 확인</h2>
+  <p style="color:var(--muted);font-size:13px;margin:0;">관리자 비밀번호를 입력하세요.</p>
+  <input type="text" id="gateInput" placeholder="비밀번호" />
+  <div><button class="primary" id="gateBtn" style="width:100%;">확인</button></div>
+  <p style="color:var(--muted);font-size:12px;margin-top:14px;line-height:1.6;">
+    ※ 이 확인은 화면 접근을 막는 용도일 뿐, 실제 데이터 보안은 Firestore 보안 규칙이 담당합니다.
+    사내 공유용으로만 링크를 배포하세요.
+  </p>
+</div>
+
+<div class="wrap" id="wrap" style="display:none;">
+  <h1>이용쿠폰 신청 관리</h1>
+  <p class="sub">쿠폰 구성 및 정원을 관리하고, 실시간 신청 현황을 확인합니다.</p>
+
+  <div class="card">
+    <h2>쿠폰 구성</h2>
+    <table>
+      <thead><tr><th>쿠폰명</th><th style="width:110px;">정원</th><th style="width:130px;">신청됨 / 남음</th><th style="width:140px;"></th></tr></thead>
+      <tbody id="couponTable"></tbody>
+    </table>
+    <div class="add-row">
+      <input type="text" id="newCouponName" placeholder="새 쿠폰 이름 (예: 자유이용권 추가입장)" />
+      <input type="number" id="newCouponCapacity" placeholder="정원" style="max-width:100px;" />
+      <button class="primary" id="addCouponBtn">쿠폰 추가</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="toolbar">
+      <h2 style="margin:0;">신청 현황 (<span id="submissionCount">0</span>명)</h2>
+      <div class="row-actions">
+        <button id="exportBtn">CSV로 내보내기</button>
+        <button class="danger" id="resetBtn">전체 초기화</button>
+      </div>
+    </div>
+    <table>
+      <thead><tr><th>이름</th><th style="width:90px;">인원(가족)</th><th>선택한 쿠폰</th><th style="width:140px;">신청 시각</th></tr></thead>
+      <tbody id="submissionTable"></tbody>
+    </table>
+    <div class="empty" id="submissionEmpty" style="display:none;">아직 신청 내역이 없습니다.</div>
+  </div>
+</div>
+
+<script type="module">
+  import { db } from "./firebase-config.js";
+  import {
+    collection, onSnapshot, query, orderBy, doc,
+    updateDoc, addDoc, deleteDoc, getDocs, writeBatch
+  } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
+
+  // ---- 간단한 접근 확인 (README 참고: 비밀번호는 필요시 아래 문자열만 바꾸면 됩니다) ----
+  const ADMIN_PASSWORD = 'everland2026';
+  document.getElementById('gateBtn').onclick = () => {
+    if (document.getElementById('gateInput').value === ADMIN_PASSWORD){
+      document.getElementById('gate').style.display = 'none';
+      document.getElementById('wrap').style.display = 'block';
+    } else {
+      alert('비밀번호가 올바르지 않습니다.');
+    }
+  };
+
+  let coupons = [];
+  let submissions = [];
+
+  const couponTable = document.getElementById('couponTable');
+  const submissionTable = document.getElementById('submissionTable');
+  const submissionCount = document.getElementById('submissionCount');
+  const submissionEmpty = document.getElementById('submissionEmpty');
+
+  function renderCoupons(){
+    couponTable.innerHTML = '';
+    coupons.forEach(c => {
+      const remaining = c.capacity - c.claimed;
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><input type="text" value="${c.name}" data-field="name" /></td>
+        <td><input type="number" value="${c.capacity}" data-field="capacity" min="0" /></td>
+        <td><span class="remain ${remaining <= 0 ? 'low' : ''}">${c.claimed} / ${remaining}</span></td>
+        <td class="row-actions">
+          <button data-action="save">저장</button>
+          <button class="danger" data-action="delete">삭제</button>
+        </td>
+      `;
+      const nameInput = tr.querySelector('[data-field=name]');
+      const capInput = tr.querySelector('[data-field=capacity]');
+      tr.querySelector('[data-action=save]').onclick = async () => {
+        await updateDoc(doc(db, 'coupons', c.id), {
+          name: nameInput.value.trim(),
+          capacity: Number(capInput.value)
+        });
+      };
+      tr.querySelector('[data-action=delete]').onclick = async () => {
+        if (confirm(`'${c.name}' 쿠폰을 삭제할까요? 이미 신청된 데이터에는 영향이 없습니다.`)){
+          await deleteDoc(doc(db, 'coupons', c.id));
+        }
+      };
+      couponTable.appendChild(tr);
+    });
+  }
+
+  function renderSubmissions(){
+    submissionTable.innerHTML = '';
+    submissionCount.textContent = submissions.length;
+    submissionEmpty.style.display = submissions.length === 0 ? 'block' : 'none';
+    submissions.forEach(s => {
+      const choiceLabels = Object.entries(s.choices || {}).map(([id, n]) => {
+        const c = coupons.find(c => c.id === id);
+        return `<span class="pill">${c ? c.name : id} ×${n}</span>`;
+      }).join('');
+      const time = s.submittedAt?.toDate ? s.submittedAt.toDate().toLocaleString('ko-KR') : '-';
+      const partyLabel = (s.totalPeople ?? 1) + '명 (가족 ' + (s.familyCount ?? 0) + ')';
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${s.name}</td>
+        <td>${partyLabel}</td>
+        <td>${choiceLabels}</td>
+        <td>${time}</td>
+      `;
+      submissionTable.appendChild(tr);
+    });
+  }
+
+  onSnapshot(query(collection(db, 'coupons'), orderBy('order')), (snap) => {
+    coupons = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderCoupons();
+    renderSubmissions();
+  });
+
+  onSnapshot(collection(db, 'submissions'), (snap) => {
+    submissions = snap.docs.map(d => d.data());
+    renderSubmissions();
+  });
+
+  document.getElementById('addCouponBtn').onclick = async () => {
+    const nameEl = document.getElementById('newCouponName');
+    const capEl = document.getElementById('newCouponCapacity');
+    const name = nameEl.value.trim();
+    const capacity = Number(capEl.value);
+    if (!name || !capacity){
+      alert('쿠폰 이름과 정원을 입력해주세요.');
+      return;
+    }
+    await addDoc(collection(db, 'coupons'), {
+      name, capacity, claimed: 0, order: coupons.length
+    });
+    nameEl.value = '';
+    capEl.value = '';
+  };
+
+  document.getElementById('exportBtn').onclick = () => {
+    const header = ['이름', '동반가족수', '총인원', '선택한 쿠폰', '신청시각'];
+    const rows = submissions.map(s => {
+      const choiceText = Object.entries(s.choices || {}).map(([id, n]) => {
+        const c = coupons.find(c => c.id === id);
+        return `${c ? c.name : id} x${n}`;
+      }).join(' / ');
+      const time = s.submittedAt?.toDate ? s.submittedAt.toDate().toLocaleString('ko-KR') : '';
+      return [s.name, s.familyCount ?? 0, s.totalPeople ?? 1, choiceText, time];
+    });
+    const csv = [header, ...rows]
+      .map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `이용쿠폰_신청현황_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  document.getElementById('resetBtn').onclick = async () => {
+    if (!confirm('모든 신청 내역을 삭제하고 쿠폰 신청 수량을 0으로 되돌립니다. 계속할까요?')) return;
+    if (!confirm('되돌릴 수 없는 작업입니다. 정말 진행할까요?')) return;
+
+    const batch = writeBatch(db);
+    const subsSnap = await getDocs(collection(db, 'submissions'));
+    subsSnap.forEach(d => batch.delete(d.ref));
+    coupons.forEach(c => batch.update(doc(db, 'coupons', c.id), { claimed: 0 }));
+    await batch.commit();
+    alert('초기화되었습니다.');
+  };
+</script>
+</body>
+</html>

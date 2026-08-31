@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+<title>에버랜드 이용쿠폰 신청</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
+<style>
+  :root{
+    --bg:#F6F8FA;
+    --surface:#FFFFFF;
+    --ink:#16233D;
+    --muted:#6B7686;
+    --line:#E4E9EF;
+    --accent:#FF6B35;
+    --accent-ink:#8A2E00;
+    --teal:#0E7C86;
+    --teal-bg:#E5F3F3;
+    --full-bg:#EEF0F3;
+    --danger:#D8434F;
+    --danger-bg:#FCEAEC;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+    background:var(--bg);
+    color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+  }
+  .page{
+    max-width:480px;
+    margin:0 auto;
+    min-height:100vh;
+    background:var(--surface);
+    display:flex;
+    flex-direction:column;
+    padding-bottom:96px;
+  }
+  header{
+    padding:36px 24px 22px;
+    border-bottom:1px solid var(--line);
+  }
+  header h1{
+    margin:0 0 6px;
+    font-size:22px;
+    font-weight:700;
+    letter-spacing:-0.01em;
+  }
+  header p{
+    margin:0;
+    font-size:14px;
+    color:var(--muted);
+    line-height:1.5;
+  }
+  .section{
+    padding:24px;
+  }
+  .section + .section{
+    border-top:1px solid var(--line);
+  }
+  .field-row{
+    display:flex;
+    gap:10px;
+    margin-bottom:10px;
+  }
+  .field{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+  }
+  .field label{
+    font-size:13px;
+    font-weight:600;
+    color:var(--muted);
+  }
+  .field input{
+    font-family:inherit;
+    font-size:15px;
+    padding:11px 12px;
+    border:1px solid var(--line);
+    border-radius:10px;
+    background:var(--bg);
+    color:var(--ink);
+  }
+  .field input:focus{
+    outline:2px solid var(--teal);
+    outline-offset:1px;
+    background:var(--surface);
+  }
+  .section-title{
+    font-size:16px;
+    font-weight:700;
+    margin:0 0 4px;
+  }
+  .section-sub{
+    font-size:13px;
+    color:var(--muted);
+    margin:0 0 16px;
+  }
+  .coupon-list{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+  .coupon-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:14px 16px;
+    border:1px solid var(--line);
+    border-radius:14px;
+    background:var(--surface);
+  }
+  .coupon-row.is-full{
+    background:var(--full-bg);
+  }
+  .coupon-info{
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+  }
+  .coupon-name{
+    font-size:15px;
+    font-weight:600;
+  }
+  .coupon-remain{
+    font-size:12.5px;
+    color:var(--teal);
+    font-weight:600;
+  }
+  .coupon-remain.full{
+    color:var(--muted);
+  }
+  .stepper{
+    display:flex;
+    align-items:center;
+    gap:12px;
+  }
+  .stepper button{
+    width:32px;
+    height:32px;
+    border-radius:50%;
+    border:1px solid var(--line);
+    background:var(--surface);
+    font-size:17px;
+    line-height:1;
+    color:var(--ink);
+    cursor:pointer;
+  }
+  .stepper button:disabled{
+    opacity:0.35;
+    cursor:not-allowed;
+  }
+  .stepper .count{
+    min-width:16px;
+    text-align:center;
+    font-weight:700;
+    font-size:15px;
+  }
+  .bottom-bar{
+    position:fixed;
+    left:0; right:0; bottom:0;
+    max-width:480px;
+    margin:0 auto;
+    background:var(--surface);
+    border-top:1px solid var(--line);
+    padding:14px 20px calc(14px + env(safe-area-inset-bottom));
+    display:flex;
+    align-items:center;
+    gap:14px;
+  }
+  .progress-text{
+    font-size:13px;
+    color:var(--muted);
+    font-weight:600;
+    white-space:nowrap;
+  }
+  .progress-text strong{
+    color:var(--ink);
+    font-size:15px;
+  }
+  .submit-btn{
+    flex:1;
+    padding:14px;
+    border:none;
+    border-radius:12px;
+    background:var(--accent);
+    color:#fff;
+    font-size:15px;
+    font-weight:700;
+    cursor:pointer;
+  }
+  .submit-btn:disabled{
+    background:#D9DEE5;
+    color:#9AA3AF;
+    cursor:not-allowed;
+  }
+  .message{
+    margin:0 24px;
+    padding:12px 14px;
+    border-radius:10px;
+    font-size:13.5px;
+    line-height:1.5;
+  }
+  .message.error{
+    background:var(--danger-bg);
+    color:var(--danger);
+  }
+  .message.info{
+    background:var(--teal-bg);
+    color:var(--teal-ink,#0E7C86);
+  }
+  .done-screen{
+    padding:64px 28px;
+    text-align:center;
+  }
+  .done-screen .mark{
+    font-size:44px;
+    margin-bottom:14px;
+  }
+  .done-screen h2{
+    font-size:19px;
+    margin:0 0 10px;
+  }
+  .done-screen p{
+    font-size:14px;
+    color:var(--muted);
+    line-height:1.6;
+    margin:0 0 24px;
+  }
+  .done-list{
+    text-align:left;
+    background:var(--bg);
+    border-radius:12px;
+    padding:16px 18px;
+    font-size:14px;
+    line-height:1.9;
+  }
+  .loading{
+    padding:60px 24px;
+    text-align:center;
+    color:var(--muted);
+    font-size:14px;
+  }
+</style>
+</head>
+<body>
+<div class="page" id="page">
+  <header>
+    <h1>에버랜드 이용쿠폰 신청</h1>
+    <p>본인 포함 인원 수만큼 이용쿠폰을 선택해주세요(1인당 1장). 같은 쿠폰을 여러 장 고를 수 있고, 남은 수량이 없는 쿠폰은 선택할 수 없어요.</p>
+  </header>
+
+  <div class="section">
+    <div class="section-title">신청자 정보</div>
+    <div class="field-row">
+      <div class="field">
+        <label for="nameInput">이름</label>
+        <input id="nameInput" type="text" placeholder="홍길동" />
+      </div>
+      <div class="field">
+        <label for="familyInput">동반 가족 수</label>
+        <input id="familyInput" type="number" min="0" placeholder="0" inputmode="numeric" />
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">이용쿠폰 선택</div>
+    <div class="section-sub">쿠폰별 남은 수량은 실시간으로 반영됩니다.</div>
+    <div class="coupon-list" id="couponList">
+      <div class="loading">쿠폰 목록을 불러오는 중…</div>
+    </div>
+  </div>
+
+  <div id="messageArea"></div>
+
+  <div class="bottom-bar">
+    <div class="progress-text"><strong id="totalCount">0</strong> / <span id="maxCount">1</span> 선택</div>
+    <button class="submit-btn" id="submitBtn" disabled>신청하기</button>
+  </div>
+</div>
+
+<script type="module">
+  import { db } from "./firebase-config.js";
+  import {
+    collection, onSnapshot, query, orderBy,
+    doc, runTransaction, serverTimestamp
+  } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
+
+  const couponListEl = document.getElementById('couponList');
+  const totalCountEl = document.getElementById('totalCount');
+  const maxCountEl = document.getElementById('maxCount');
+  const submitBtn = document.getElementById('submitBtn');
+  const messageArea = document.getElementById('messageArea');
+  const nameInput = document.getElementById('nameInput');
+  const familyInput = document.getElementById('familyInput');
+  const pageEl = document.getElementById('page');
+
+  let coupons = [];        // [{id, name, capacity, claimed}]
+  let selections = {};     // {couponId: count}
+
+  function showMessage(text, type='error'){
+    messageArea.innerHTML = `<div class="message ${type}">${text}</div>`;
+  }
+  function clearMessage(){
+    messageArea.innerHTML = '';
+  }
+
+  function getMaxTotal(){
+    const raw = familyInput.value.trim();
+    const familyCount = raw === '' ? 0 : parseInt(raw, 10);
+    if (isNaN(familyCount) || familyCount < 0) return 1;
+    return 1 + familyCount; // 본인 1명 + 동반 가족 수
+  }
+
+  function totalSelected(){
+    return Object.values(selections).reduce((a,b)=>a+b,0);
+  }
+
+  // 가족 수가 바뀌면 현재 선택값이 새 최대치를 넘는지 확인하고, 넘으면 초기화
+  familyInput.addEventListener('input', () => {
+    const max = getMaxTotal();
+    if (totalSelected() > max){
+      selections = {};
+      showMessage('인원 수가 줄어들어 선택을 초기화했어요. 다시 선택해주세요.', 'info');
+    } else {
+      clearMessage();
+    }
+    render();
+  });
+
+  function render(){
+    const maxTotal = getMaxTotal();
+    couponListEl.innerHTML = '';
+    coupons.forEach(c => {
+      const selected = selections[c.id] || 0;
+      const remaining = c.capacity - c.claimed;
+      const isFull = remaining <= 0;
+      const row = document.createElement('div');
+      row.className = 'coupon-row' + (isFull ? ' is-full' : '');
+
+      const info = document.createElement('div');
+      info.className = 'coupon-info';
+      info.innerHTML = `
+        <div class="coupon-name">${c.name}</div>
+        <div class="coupon-remain ${isFull ? 'full' : ''}">${isFull ? '마감' : remaining + '장 남음'}</div>
+      `;
+
+      const stepper = document.createElement('div');
+      stepper.className = 'stepper';
+      const minusBtn = document.createElement('button');
+      minusBtn.textContent = '−';
+      minusBtn.disabled = selected <= 0;
+      minusBtn.onclick = () => {
+        selections[c.id] = Math.max(0, selected - 1);
+        clearMessage();
+        render();
+      };
+      const countEl = document.createElement('div');
+      countEl.className = 'count';
+      countEl.textContent = selected;
+      const plusBtn = document.createElement('button');
+      plusBtn.textContent = '+';
+      const canAddMore = totalSelected() < maxTotal && selected < remaining;
+      plusBtn.disabled = !canAddMore;
+      plusBtn.onclick = () => {
+        selections[c.id] = selected + 1;
+        clearMessage();
+        render();
+      };
+
+      stepper.append(minusBtn, countEl, plusBtn);
+      row.append(info, stepper);
+      couponListEl.appendChild(row);
+    });
+
+    const total = totalSelected();
+    totalCountEl.textContent = total;
+    maxCountEl.textContent = maxTotal;
+    submitBtn.disabled = total !== maxTotal || total === 0;
+  }
+
+  onSnapshot(query(collection(db, 'coupons'), orderBy('order')), (snap) => {
+    coupons = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    // 신규로 목록에 없는 쿠폰의 선택값 제거
+    Object.keys(selections).forEach(id => {
+      if (!coupons.find(c => c.id === id)) delete selections[id];
+    });
+    render();
+  }, (err) => {
+    couponListEl.innerHTML = `<div class="loading">쿠폰 목록을 불러오지 못했습니다. (${err.message})</div>`;
+  });
+
+  submitBtn.addEventListener('click', async () => {
+    clearMessage();
+    const name = nameInput.value.trim();
+    const maxTotal = getMaxTotal();
+
+    if (!name){
+      showMessage('이름을 입력해주세요.');
+      return;
+    }
+    if (totalSelected() !== maxTotal){
+      showMessage(`쿠폰을 총 ${maxTotal}장 선택해주세요.`);
+      return;
+    }
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = '처리 중…';
+
+    const chosen = Object.entries(selections).filter(([,n]) => n > 0);
+
+    try {
+      await runTransaction(db, async (tx) => {
+        const submissionRef = doc(collection(db, 'submissions'));
+        const couponRefs = chosen.map(([id]) => doc(db, 'coupons', id));
+        const couponSnaps = await Promise.all(couponRefs.map(ref => tx.get(ref)));
+
+        const overCapacity = [];
+        couponSnaps.forEach((snap, i) => {
+          const data = snap.data();
+          const requested = chosen[i][1];
+          const remaining = data.capacity - data.claimed;
+          if (requested > remaining) overCapacity.push(data.name);
+        });
+        if (overCapacity.length > 0){
+          const e = new Error('OVER_CAPACITY');
+          e.names = overCapacity;
+          throw e;
+        }
+
+        couponSnaps.forEach((snap, i) => {
+          const requested = chosen[i][1];
+          tx.update(couponRefs[i], { claimed: snap.data().claimed + requested });
+        });
+
+        const choicesMap = {};
+        chosen.forEach(([id, n]) => { choicesMap[id] = n; });
+        tx.set(submissionRef, {
+          name,
+          familyCount: maxTotal - 1,
+          totalPeople: maxTotal,
+          choices: choicesMap,
+          submittedAt: serverTimestamp()
+        });
+      });
+
+      const summary = chosen.map(([id, n]) => {
+        const c = coupons.find(c => c.id === id);
+        return `${c ? c.name : id} × ${n}장`;
+      }).join('<br/>');
+
+      pageEl.innerHTML = `
+        <div class="done-screen">
+          <div class="mark">✓</div>
+          <h2>신청이 완료됐어요</h2>
+          <p>${name}님, 아래 내용으로 신청이 접수되었습니다.</p>
+          <div class="done-list">${summary}</div>
+        </div>`;
+
+    } catch (err) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = '신청하기';
+      if (err.message === 'OVER_CAPACITY'){
+        showMessage(`선택하신 쿠폰 중 방금 마감된 항목이 있어요: ${err.names.join(', ')}. 수량을 다시 선택해주세요.`);
+      } else {
+        showMessage('신청 처리 중 문제가 발생했습니다. 잠시 후 다시 시도해주세요.');
+      }
+    }
+  });
+</script>
+</body>
+</html>
