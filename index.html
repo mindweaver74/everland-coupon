@@ -261,8 +261,8 @@
         <input id="nameInput" type="text" placeholder="홍길동" />
       </div>
       <div class="field">
-        <label for="familyInput">동반 가족 수</label>
-        <input id="familyInput" type="number" min="0" placeholder="0" inputmode="numeric" />
+        <label for="familyInput">총인원</label>
+        <input id="familyInput" type="number" min="0" placeholder="1" inputmode="numeric" />
       </div>
     </div>
   </div>
@@ -311,16 +311,16 @@
 
   function getMaxTotal(){
     const raw = familyInput.value.trim();
-    const familyCount = raw === '' ? 0 : parseInt(raw, 10);
-    if (isNaN(familyCount) || familyCount < 0) return 0;
-    return (1 + familyCount) - 1; // 신청자 + 동반 가족 수 - 1
+    const totalPeople = raw === '' ? 0 : parseInt(raw, 10);
+    if (isNaN(totalPeople) || totalPeople < 0) return 0;
+    return totalPeople; // 총인원 수만큼 쿠폰 신청
   }
 
   function totalSelected(){
     return Object.values(selections).reduce((a,b)=>a+b,0);
   }
 
-  // 가족 수가 바뀌면 현재 선택값이 새 최대치를 넘는지 확인하고, 넘으면 초기화
+  // 총인원이 바뀌면 현재 선택값이 새 최대치를 넘는지 확인하고, 넘으면 초기화
   familyInput.addEventListener('input', () => {
     const max = getMaxTotal();
     if (totalSelected() > max){
@@ -441,7 +441,6 @@
         chosen.forEach(([id, n]) => { choicesMap[id] = n; });
         tx.set(submissionRef, {
           name,
-          familyCount: maxTotal,
           totalPeople: maxTotal,
           choices: choicesMap,
           submittedAt: serverTimestamp()

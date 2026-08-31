@@ -87,7 +87,7 @@
       </div>
     </div>
     <table>
-      <thead><tr><th>이름</th><th style="width:90px;">인원(가족)</th><th>선택한 쿠폰</th><th style="width:140px;">신청 시각</th></tr></thead>
+      <thead><tr><th>이름</th><th style="width:90px;">총인원</th><th>선택한 쿠폰</th><th style="width:140px;">신청 시각</th></tr></thead>
       <tbody id="submissionTable"></tbody>
     </table>
     <div class="empty" id="submissionEmpty" style="display:none;">아직 신청 내역이 없습니다.</div>
@@ -161,7 +161,7 @@
         return `<span class="pill">${c ? c.name : id} ×${n}</span>`;
       }).join('');
       const time = s.submittedAt?.toDate ? s.submittedAt.toDate().toLocaleString('ko-KR') : '-';
-      const partyLabel = (s.totalPeople ?? 1) + '명 (가족 ' + (s.familyCount ?? 0) + ')';
+      const partyLabel = (s.totalPeople ?? s.familyCount ?? 1) + '명';
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td>${s.name}</td>
@@ -201,14 +201,14 @@
   };
 
   document.getElementById('exportBtn').onclick = () => {
-    const header = ['이름', '동반가족수', '총인원', '선택한 쿠폰', '신청시각'];
+    const header = ['이름', '총인원', '선택한 쿠폰', '신청시각'];
     const rows = submissions.map(s => {
       const choiceText = Object.entries(s.choices || {}).map(([id, n]) => {
         const c = coupons.find(c => c.id === id);
         return `${c ? c.name : id} x${n}`;
       }).join(' / ');
       const time = s.submittedAt?.toDate ? s.submittedAt.toDate().toLocaleString('ko-KR') : '';
-      return [s.name, s.familyCount ?? 0, s.totalPeople ?? 1, choiceText, time];
+      return [s.name, s.totalPeople ?? s.familyCount ?? 1, choiceText, time];
     });
     const csv = [header, ...rows]
       .map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))
