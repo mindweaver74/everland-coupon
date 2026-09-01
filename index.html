@@ -267,6 +267,10 @@
     color:var(--danger);
     margin-top:-2px;
   }
+  .field-hint:not(.warn){
+    color:var(--teal);
+    font-weight:600;
+  }
   .deadline-notice{
     margin:12px 0 0;
     padding:9px 12px;
@@ -294,7 +298,7 @@
       <div class="field">
         <label for="nameInput">이름</label>
         <input id="nameInput" type="text" placeholder="홍길동" />
-        <div class="field-hint hidden" id="nameHint">공백 없이 붙여서 입력해주세요.</div>
+        <div class="field-hint warn hidden" id="nameHint">공백 없이 붙여서 입력해주세요.</div>
       </div>
       <div class="field">
         <label for="totalInput">총인원</label>
@@ -472,6 +476,11 @@
       if (overLimit){
         totalHint.textContent = `최대 ${maxAllowedTotal}명까지만 신청 가능합니다.`;
         totalHint.classList.remove('hidden');
+        totalHint.classList.add('warn');
+      } else if (maxTotal > 0){
+        totalHint.textContent = `총 ${maxTotal}명이 신청됩니다.`;
+        totalHint.classList.remove('hidden');
+        totalHint.classList.remove('warn');
       } else {
         totalHint.classList.add('hidden');
       }
@@ -581,7 +590,10 @@
           <div class="mark">✓</div>
           <h2>신청이 완료됐어요</h2>
           <p>${name}님, 아래 내용으로 신청이 접수되었습니다.</p>
-          <div class="done-list">${summary}</div>
+          <div class="done-list">
+            <strong>총인원: ${maxTotal}명</strong><br/><br/>
+            ${summary}
+          </div>
         </div>`;
 
     } catch (err) {
