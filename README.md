@@ -8,8 +8,8 @@
 
 | 용도 | 링크 | 공유 대상 |
 |---|---|---|
-| 참가자 신청 페이지 | `https://mindweaver74.github.io/everland-coupon/` | 전체 참가자 (밴드 공지) |
-| 관리자 페이지 | `https://mindweaver74.github.io/everland-coupon//admin.html` | 운영진만 (비밀번호: ``) |
+| 참가자 신청 페이지 | `index.html` | 전체 참가자 (밴드 공지) |
+| 관리자 페이지 | `admin.html` | 운영진만 (비밀번호: ``) |
 
 > ⚠️ 관리자 링크는 절대 밴드나 단톡방에 공개로 올리지 마세요. 운영진에게만 개별로 전달하세요.
 
