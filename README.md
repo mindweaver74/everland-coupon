@@ -9,7 +9,7 @@
 | 용도 | 링크 | 공유 대상 |
 |---|---|---|
 | 참가자 신청 페이지 | `https://mindweaver74.github.io/everland-coupon/` | 전체 참가자 (밴드 공지) |
-| 관리자 페이지 | `https://mindweaver74.github.io/everland-coupon//admin.html` | 운영진만 (비밀번호: `everland2026`) |
+| 관리자 페이지 | `https://mindweaver74.github.io/everland-coupon//admin.html` | 운영진만 (비밀번호: ``) |
 
 > ⚠️ 관리자 링크는 절대 밴드나 단톡방에 공개로 올리지 마세요. 운영진에게만 개별로 전달하세요.
 
@@ -101,4 +101,4 @@ A. 됩니다. `admin.html`에서 해당 쿠폰의 정원 숫자만 늘려서 저
 A. `admin.html`의 "신청 마감 시각" 카드에서 날짜/시각을 다시 선택하고 저장하면 바로 반영됩니다.
 
 **Q. 관리자 비밀번호를 바꾸고 싶어요.**
-A. `admin.html` 파일 안 `const ADMIN_PASSWORD = 'everland2026';` 부분을 원하는 값으로 바꾼 뒤 GitHub에 다시 커밋하면 됩니다.
+A. `admin.html` 파일 안 `const ADMIN_PASSWORD = '';` 부분을 원하는 값으로 바꾼 뒤 GitHub에 다시 커밋하면 됩니다.
