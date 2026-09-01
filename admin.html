@@ -96,6 +96,7 @@
         <button class="danger" id="resetBtn">전체 초기화</button>
       </div>
     </div>
+    <input type="text" id="submissionSearch" placeholder="이름으로 검색" style="margin-bottom:14px;" />
     <table>
       <thead><tr><th>이름</th><th style="width:90px;">총인원</th><th>선택한 쿠폰</th><th style="width:140px;">신청 시각</th><th style="width:130px;">관리</th></tr></thead>
       <tbody id="submissionTable"></tbody>
@@ -130,6 +131,8 @@
   const submissionTable = document.getElementById('submissionTable');
   const submissionCount = document.getElementById('submissionCount');
   const submissionEmpty = document.getElementById('submissionEmpty');
+  const submissionSearch = document.getElementById('submissionSearch');
+  submissionSearch.addEventListener('input', renderSubmissions);
 
   function renderCoupons(){
     couponTable.innerHTML = '';
@@ -165,8 +168,18 @@
   function renderSubmissions(){
     submissionTable.innerHTML = '';
     submissionCount.textContent = submissions.length;
-    submissionEmpty.style.display = submissions.length === 0 ? 'block' : 'none';
-    submissions.forEach(s => {
+
+    const term = submissionSearch.value.trim();
+    const filtered = term
+      ? submissions.filter(s => (s.name || '').includes(term))
+      : submissions;
+
+    submissionEmpty.style.display = filtered.length === 0 ? 'block' : 'none';
+    submissionEmpty.textContent = submissions.length === 0
+      ? '아직 신청 내역이 없습니다.'
+      : '검색 결과가 없습니다.';
+
+    filtered.forEach(s => {
       const tr = document.createElement('tr');
       if (s.id === editingId){
         renderEditRow(tr, s);
