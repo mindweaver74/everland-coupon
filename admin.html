@@ -76,6 +76,16 @@
   </div>
 
   <div class="card">
+    <h2>참가자당 최대 총인원</h2>
+    <p class="sub" style="margin-bottom:14px;">참가자 한 명이 입력할 수 있는 총인원의 최대치예요. 이 수를 넘게 입력하면 신청 페이지에서 안내 문구가 뜨고 신청이 막혀요. 비워두면 제한 없이 몇 명이든 입력 가능합니다.</p>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <input type="number" min="1" id="maxTotalInput" placeholder="예: 4" style="flex:1;" />
+      <button class="primary" id="saveMaxTotalBtn">저장</button>
+      <button id="clearMaxTotalBtn">제한 없음</button>
+    </div>
+  </div>
+
+  <div class="card">
     <h2>쿠폰 구성</h2>
     <table>
       <thead><tr><th>쿠폰명</th><th style="width:110px;">정원</th><th style="width:130px;">신청됨 / 남음</th><th style="width:140px;"></th></tr></thead>
@@ -402,6 +412,7 @@
 
   // ---- 수정 마감 시각 ----
   const editDeadlineInput = document.getElementById('editDeadlineInput');
+  const maxTotalInput = document.getElementById('maxTotalInput');
 
   function toLocalInputValue(date){
     const pad = n => String(n).padStart(2, '0');
@@ -412,6 +423,11 @@
     const data = snap.data();
     if (data && data.deadline){
       editDeadlineInput.value = toLocalInputValue(data.deadline.toDate());
+    }
+    if (data && typeof data.maxAllowedTotal === 'number'){
+      maxTotalInput.value = data.maxAllowedTotal;
+    } else {
+      maxTotalInput.value = '';
     }
   });
 
@@ -431,6 +447,24 @@
     await setDoc(doc(db, 'settings', 'config'), { deadline: null }, { merge: true });
     editDeadlineInput.value = '';
     alert('신청 마감이 해제되었습니다.');
+  };
+
+  // ---- 참가자당 최대 총인원 ----
+  document.getElementById('saveMaxTotalBtn').onclick = async () => {
+    const n = Number(maxTotalInput.value);
+    if (!maxTotalInput.value || isNaN(n) || n < 1){
+      alert('1 이상의 숫자를 입력해주세요.');
+      return;
+    }
+    await setDoc(doc(db, 'settings', 'config'), { maxAllowedTotal: n }, { merge: true });
+    alert('참가자당 최대 총인원이 저장되었습니다.');
+  };
+
+  document.getElementById('clearMaxTotalBtn').onclick = async () => {
+    if (!confirm('총인원 제한을 없애고 몇 명이든 입력 가능하게 할까요?')) return;
+    await setDoc(doc(db, 'settings', 'config'), { maxAllowedTotal: null }, { merge: true });
+    maxTotalInput.value = '';
+    alert('총인원 제한이 해제되었습니다.');
   };
 </script>
 </body>

@@ -299,6 +299,7 @@
       <div class="field">
         <label for="totalInput">총인원</label>
         <input id="totalInput" type="number" min="0" placeholder="1" inputmode="numeric" />
+        <div class="field-hint hidden" id="totalHint"></div>
       </div>
     </div>
   </div>
@@ -338,7 +339,9 @@
   let coupons = [];        // [{id, name, capacity, claimed}]
   let selections = {};     // {couponId: count}
   let deadline = null;     // Date | null
+  let maxAllowedTotal = null; // number | null — 참가자당 최대 총인원 제한
   let closedShown = false;
+  const totalHint = document.getElementById('totalHint');
 
   function showMessage(text, type='error'){
     messageArea.innerHTML = `<div class="message ${type}">${text}</div>`;
@@ -377,6 +380,7 @@
   onSnapshot(doc(db, 'settings', 'config'), (snap) => {
     const data = snap.data();
     deadline = data && data.deadline ? data.deadline.toDate() : null;
+    maxAllowedTotal = data && typeof data.maxAllowedTotal === 'number' ? data.maxAllowedTotal : null;
 
     const notice = document.getElementById('deadlineNotice');
     if (notice){
@@ -389,6 +393,7 @@
     }
 
     if (isClosed()) showClosedScreen();
+    render();
   });
 
   const nameHint = document.getElementById('nameHint');
@@ -461,7 +466,18 @@
     const total = totalSelected();
     totalCountEl.textContent = total;
     maxCountEl.textContent = maxTotal;
-    submitBtn.disabled = total !== maxTotal || total === 0;
+
+    const overLimit = !!(maxAllowedTotal && maxTotal > maxAllowedTotal);
+    if (totalHint){
+      if (overLimit){
+        totalHint.textContent = `최대 ${maxAllowedTotal}명까지만 신청 가능합니다.`;
+        totalHint.classList.remove('hidden');
+      } else {
+        totalHint.classList.add('hidden');
+      }
+    }
+
+    submitBtn.disabled = total !== maxTotal || total === 0 || overLimit;
   }
 
   onSnapshot(query(collection(db, 'coupons'), orderBy('order')), (snap) => {
@@ -488,6 +504,10 @@
 
     if (!name){
       showMessage('이름을 입력해주세요.');
+      return;
+    }
+    if (maxAllowedTotal && maxTotal > maxAllowedTotal){
+      showMessage(`최대 ${maxAllowedTotal}명까지만 신청 가능합니다.`);
       return;
     }
     if (totalSelected() !== maxTotal){
