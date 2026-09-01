@@ -262,6 +262,17 @@
     color:var(--muted);
     font-size:14px;
   }
+  .deadline-notice{
+    margin:12px 0 0;
+    padding:9px 12px;
+    background:var(--teal-bg);
+    color:var(--teal);
+    border-radius:8px;
+    font-size:12.5px;
+    font-weight:600;
+    line-height:1.5;
+  }
+  .hidden{ display:none !important; }
 </style>
 </head>
 <body>
@@ -269,6 +280,7 @@
   <header>
     <h1>에버랜드 이용쿠폰 신청</h1>
     <p>본인 포함 인원 수만큼 이용쿠폰을 선택해주세요(1인당 1장). 같은 쿠폰을 여러 장 고를 수 있고, 남은 수량이 없는 쿠폰은 선택할 수 없어요.</p>
+    <p id="deadlineNotice" class="deadline-notice hidden"></p>
   </header>
 
   <div class="section">
@@ -359,6 +371,17 @@
   onSnapshot(doc(db, 'settings', 'config'), (snap) => {
     const data = snap.data();
     deadline = data && data.deadline ? data.deadline.toDate() : null;
+
+    const notice = document.getElementById('deadlineNotice');
+    if (notice){
+      if (deadline){
+        notice.textContent = `⏰ 신청 마감: ${deadline.toLocaleString('ko-KR', { year:'numeric', month:'long', day:'numeric', hour:'2-digit', minute:'2-digit' })}까지`;
+        notice.classList.remove('hidden');
+      } else {
+        notice.classList.add('hidden');
+      }
+    }
+
     if (isClosed()) showClosedScreen();
   });
 
