@@ -262,6 +262,11 @@
     color:var(--muted);
     font-size:14px;
   }
+  .field-hint{
+    font-size:12px;
+    color:var(--danger);
+    margin-top:-2px;
+  }
   .deadline-notice{
     margin:12px 0 0;
     padding:9px 12px;
@@ -289,6 +294,7 @@
       <div class="field">
         <label for="nameInput">이름</label>
         <input id="nameInput" type="text" placeholder="홍길동" />
+        <div class="field-hint hidden" id="nameHint">공백 없이 붙여서 입력해주세요.</div>
       </div>
       <div class="field">
         <label for="totalInput">총인원</label>
@@ -316,8 +322,8 @@
 <script type="module">
   import { db } from "./firebase-config.js";
   import {
-    collection, onSnapshot, query, orderBy,
-    doc, runTransaction, serverTimestamp
+    collection, onSnapshot, query, where, orderBy,
+    doc, getDocs, runTransaction, serverTimestamp
   } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
 
   const couponListEl = document.getElementById('couponList');
@@ -383,6 +389,16 @@
     }
 
     if (isClosed()) showClosedScreen();
+  });
+
+  const nameHint = document.getElementById('nameHint');
+  nameInput.addEventListener('input', () => {
+    if (/\s/.test(nameInput.value)){
+      nameInput.value = nameInput.value.replace(/\s/g, '');
+      nameHint.classList.remove('hidden');
+    } else {
+      nameHint.classList.add('hidden');
+    }
   });
 
   // 총인원이 바뀌면 현재 선택값이 새 최대치를 넘는지 확인하고, 넘으면 초기화
@@ -467,7 +483,7 @@
       return;
     }
 
-    const name = nameInput.value.trim();
+    const name = nameInput.value.replace(/\s/g, '');
     const maxTotal = getMaxTotal();
 
     if (!name){
@@ -480,6 +496,23 @@
     }
 
     submitBtn.disabled = true;
+    submitBtn.textContent = '확인 중…';
+
+    try {
+      const dupSnap = await getDocs(query(collection(db, 'submissions'), where('name', '==', name)));
+      if (!dupSnap.empty){
+        showMessage('이미 같은 이름으로 신청된 내역이 있어요. 중복 신청은 할 수 없습니다.');
+        submitBtn.disabled = false;
+        submitBtn.textContent = '신청하기';
+        return;
+      }
+    } catch (err) {
+      showMessage('중복 확인 중 문제가 발생했습니다. 잠시 후 다시 시도해주세요.');
+      submitBtn.disabled = false;
+      submitBtn.textContent = '신청하기';
+      return;
+    }
+
     submitBtn.textContent = '처리 중…';
 
     const chosen = Object.entries(selections).filter(([,n]) => n > 0);
