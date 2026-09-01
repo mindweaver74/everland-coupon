@@ -97,7 +97,7 @@
       </div>
     </div>
     <table>
-      <thead><tr><th>이름</th><th style="width:90px;">총인원</th><th>선택한 쿠폰</th><th style="width:140px;">신청 시각</th></tr></thead>
+      <thead><tr><th>이름</th><th style="width:90px;">총인원</th><th>선택한 쿠폰</th><th style="width:140px;">신청 시각</th><th style="width:130px;">관리</th></tr></thead>
       <tbody id="submissionTable"></tbody>
     </table>
     <div class="empty" id="submissionEmpty" style="display:none;">아직 신청 내역이 없습니다.</div>
@@ -108,7 +108,7 @@
   import { db } from "./firebase-config.js";
   import {
     collection, onSnapshot, query, orderBy, doc,
-    updateDoc, addDoc, deleteDoc, getDocs, writeBatch, setDoc, Timestamp
+    updateDoc, addDoc, deleteDoc, getDocs, writeBatch, setDoc, Timestamp, runTransaction
   } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
 
   // ---- 간단한 접근 확인 (README 참고: 비밀번호는 필요시 아래 문자열만 바꾸면 됩니다) ----
@@ -124,6 +124,7 @@
 
   let coupons = [];
   let submissions = [];
+  let editingId = null;
 
   const couponTable = document.getElementById('couponTable');
   const submissionTable = document.getElementById('submissionTable');
@@ -166,21 +167,159 @@
     submissionCount.textContent = submissions.length;
     submissionEmpty.style.display = submissions.length === 0 ? 'block' : 'none';
     submissions.forEach(s => {
-      const choiceLabels = Object.entries(s.choices || {}).map(([id, n]) => {
-        const c = coupons.find(c => c.id === id);
-        return `<span class="pill">${c ? c.name : id} ×${n}</span>`;
-      }).join('');
-      const time = s.submittedAt?.toDate ? s.submittedAt.toDate().toLocaleString('ko-KR') : '-';
-      const partyLabel = (s.totalPeople ?? s.familyCount ?? 1) + '명';
       const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td>${s.name}</td>
-        <td>${partyLabel}</td>
-        <td>${choiceLabels}</td>
-        <td>${time}</td>
-      `;
+      if (s.id === editingId){
+        renderEditRow(tr, s);
+      } else {
+        renderViewRow(tr, s);
+      }
       submissionTable.appendChild(tr);
     });
+  }
+
+  function renderViewRow(tr, s){
+    const choiceLabels = Object.entries(s.choices || {}).map(([id, n]) => {
+      const c = coupons.find(c => c.id === id);
+      return `<span class="pill">${c ? c.name : id} ×${n}</span>`;
+    }).join('');
+    const time = s.submittedAt?.toDate ? s.submittedAt.toDate().toLocaleString('ko-KR') : '-';
+    const partyLabel = (s.totalPeople ?? 1) + '명';
+    tr.innerHTML = `
+      <td>${s.name}</td>
+      <td>${partyLabel}</td>
+      <td>${choiceLabels}</td>
+      <td>${time}</td>
+      <td class="row-actions">
+        <button data-action="edit">수정</button>
+        <button class="danger" data-action="delete">삭제</button>
+      </td>
+    `;
+    tr.querySelector('[data-action=edit]').onclick = () => {
+      editingId = s.id;
+      renderSubmissions();
+    };
+    tr.querySelector('[data-action=delete]').onclick = () => deleteSubmission(s);
+  }
+
+  function renderEditRow(tr, s){
+    const choices = s.choices || {};
+    const couponInputsHtml = coupons.map(c => `
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+        <span style="min-width:110px;font-size:12.5px;">${c.name}</span>
+        <input type="number" min="0" value="${choices[c.id] || 0}" data-coupon-id="${c.id}" style="width:64px;" />
+      </div>
+    `).join('');
+
+    tr.innerHTML = `
+      <td><input type="text" value="${s.name}" data-field="name" /></td>
+      <td><input type="number" min="0" value="${s.totalPeople ?? 1}" data-field="totalPeople" /></td>
+      <td>${couponInputsHtml}</td>
+      <td>-</td>
+      <td class="row-actions">
+        <button class="primary" data-action="save">저장</button>
+        <button data-action="cancel">취소</button>
+      </td>
+    `;
+
+    tr.querySelector('[data-action=cancel]').onclick = () => {
+      editingId = null;
+      renderSubmissions();
+    };
+    tr.querySelector('[data-action=save]').onclick = () => saveSubmissionEdit(tr, s);
+  }
+
+  async function saveSubmissionEdit(tr, s){
+    const newName = tr.querySelector('[data-field=name]').value.trim();
+    const newTotalPeople = Number(tr.querySelector('[data-field=totalPeople]').value);
+    const newChoices = {};
+    tr.querySelectorAll('[data-coupon-id]').forEach(input => {
+      const n = Number(input.value);
+      if (n > 0) newChoices[input.dataset.couponId] = n;
+    });
+
+    if (!newName){
+      alert('이름을 입력해주세요.');
+      return;
+    }
+    const totalSelected = Object.values(newChoices).reduce((a,b)=>a+b,0);
+    if (totalSelected !== newTotalPeople){
+      alert(`선택한 쿠폰 합계(${totalSelected}장)가 총인원(${newTotalPeople}명)과 일치해야 합니다.`);
+      return;
+    }
+
+    try {
+      await runTransaction(db, async (tx) => {
+        const subRef = doc(db, 'submissions', s.id);
+        const freshSnap = await tx.get(subRef);
+        if (!freshSnap.exists()) throw new Error('NOT_FOUND');
+        const freshChoices = freshSnap.data().choices || {};
+
+        const allIds = new Set([...Object.keys(freshChoices), ...Object.keys(newChoices)]);
+        const couponRefs = [...allIds].map(id => doc(db, 'coupons', id));
+        const couponSnaps = await Promise.all(couponRefs.map(ref => tx.get(ref)));
+
+        const overCapacity = [];
+        const deltas = [];
+        [...allIds].forEach((id, i) => {
+          const before = freshChoices[id] || 0;
+          const after = newChoices[id] || 0;
+          const delta = after - before;
+          deltas.push(delta);
+          if (delta > 0){
+            const data = couponSnaps[i].data();
+            const remaining = data.capacity - data.claimed;
+            if (delta > remaining) overCapacity.push(data.name);
+          }
+        });
+        if (overCapacity.length > 0){
+          const e = new Error('OVER_CAPACITY');
+          e.names = overCapacity;
+          throw e;
+        }
+
+        couponSnaps.forEach((snap, i) => {
+          const delta = deltas[i];
+          if (delta !== 0) tx.update(couponRefs[i], { claimed: snap.data().claimed + delta });
+        });
+
+        tx.update(subRef, { name: newName, totalPeople: newTotalPeople, choices: newChoices, updatedAt: new Date() });
+      });
+
+      editingId = null;
+    } catch (err) {
+      if (err.message === 'OVER_CAPACITY'){
+        alert(`정원을 초과하는 쿠폰이 있어요: ${err.names.join(', ')}`);
+      } else {
+        alert('수정 저장에 실패했습니다: ' + err.message);
+      }
+    }
+  }
+
+  async function deleteSubmission(s){
+    if (!confirm(`'${s.name}'님의 신청을 삭제할까요? 해당 신청으로 차감된 쿠폰 수량도 함께 되돌려집니다.`)) return;
+
+    try {
+      await runTransaction(db, async (tx) => {
+        const subRef = doc(db, 'submissions', s.id);
+        const freshSnap = await tx.get(subRef);
+        if (!freshSnap.exists()) return; // 이미 삭제됨
+        const freshChoices = freshSnap.data().choices || {};
+
+        const couponIds = Object.keys(freshChoices);
+        const couponRefs = couponIds.map(id => doc(db, 'coupons', id));
+        const couponSnaps = await Promise.all(couponRefs.map(ref => tx.get(ref)));
+
+        couponSnaps.forEach((snap, i) => {
+          if (!snap.exists()) return;
+          const amount = freshChoices[couponIds[i]] || 0;
+          tx.update(couponRefs[i], { claimed: Math.max(0, snap.data().claimed - amount) });
+        });
+
+        tx.delete(subRef);
+      });
+    } catch (err) {
+      alert('삭제에 실패했습니다: ' + err.message);
+    }
   }
 
   onSnapshot(query(collection(db, 'coupons'), orderBy('order')), (snap) => {
@@ -190,7 +329,7 @@
   });
 
   onSnapshot(collection(db, 'submissions'), (snap) => {
-    submissions = snap.docs.map(d => d.data());
+    submissions = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     renderSubmissions();
   });
 
