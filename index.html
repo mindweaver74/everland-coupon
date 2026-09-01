@@ -83,6 +83,7 @@
     border-radius:10px;
     background:var(--bg);
     color:var(--ink);
+    width:100%;
   }
   .field input:focus{
     outline:2px solid var(--teal);
@@ -238,6 +239,23 @@
     font-size:14px;
     line-height:1.9;
   }
+  .closed-screen{
+    padding:64px 28px;
+    text-align:center;
+  }
+  .closed-screen .mark{
+    font-size:44px;
+    margin-bottom:14px;
+  }
+  .closed-screen h2{
+    font-size:19px;
+    margin:0 0 10px;
+  }
+  .closed-screen p{
+    font-size:14px;
+    color:var(--muted);
+    line-height:1.6;
+  }
   .loading{
     padding:60px 24px;
     text-align:center;
@@ -261,8 +279,8 @@
         <input id="nameInput" type="text" placeholder="홍길동" />
       </div>
       <div class="field">
-        <label for="familyInput">총인원</label>
-        <input id="familyInput" type="number" min="0" placeholder="1" inputmode="numeric" />
+        <label for="totalInput">총인원</label>
+        <input id="totalInput" type="number" min="0" placeholder="1" inputmode="numeric" />
       </div>
     </div>
   </div>
@@ -277,7 +295,7 @@
 
   <div id="messageArea"></div>
 
-  <div class="bottom-bar">
+  <div class="bottom-bar" id="bottomBar">
     <div class="progress-text"><strong id="totalCount">0</strong> / <span id="maxCount">1</span> 선택</div>
     <button class="submit-btn" id="submitBtn" disabled>신청하기</button>
   </div>
@@ -296,11 +314,13 @@
   const submitBtn = document.getElementById('submitBtn');
   const messageArea = document.getElementById('messageArea');
   const nameInput = document.getElementById('nameInput');
-  const familyInput = document.getElementById('familyInput');
+  const totalInput = document.getElementById('totalInput');
   const pageEl = document.getElementById('page');
 
   let coupons = [];        // [{id, name, capacity, claimed}]
   let selections = {};     // {couponId: count}
+  let deadline = null;     // Date | null
+  let closedShown = false;
 
   function showMessage(text, type='error'){
     messageArea.innerHTML = `<div class="message ${type}">${text}</div>`;
@@ -310,18 +330,40 @@
   }
 
   function getMaxTotal(){
-    const raw = familyInput.value.trim();
-    const totalPeople = raw === '' ? 0 : parseInt(raw, 10);
-    if (isNaN(totalPeople) || totalPeople < 0) return 0;
-    return totalPeople; // 총인원 수만큼 쿠폰 신청
+    const raw = totalInput.value.trim();
+    const n = raw === '' ? 0 : parseInt(raw, 10);
+    if (isNaN(n) || n < 0) return 0;
+    return n;
   }
 
   function totalSelected(){
     return Object.values(selections).reduce((a,b)=>a+b,0);
   }
 
+  function isClosed(){
+    return !!(deadline && new Date() > deadline);
+  }
+
+  function showClosedScreen(){
+    if (closedShown) return;
+    closedShown = true;
+    const dateStr = deadline.toLocaleString('ko-KR');
+    pageEl.innerHTML = `
+      <div class="closed-screen">
+        <div class="mark">🔒</div>
+        <h2>신청이 마감되었습니다</h2>
+        <p>신청 가능 기간: ~ ${dateStr}<br/>문의사항은 운영진에게 연락해주세요.</p>
+      </div>`;
+  }
+
+  onSnapshot(doc(db, 'settings', 'config'), (snap) => {
+    const data = snap.data();
+    deadline = data && data.deadline ? data.deadline.toDate() : null;
+    if (isClosed()) showClosedScreen();
+  });
+
   // 총인원이 바뀌면 현재 선택값이 새 최대치를 넘는지 확인하고, 넘으면 초기화
-  familyInput.addEventListener('input', () => {
+  totalInput.addEventListener('input', () => {
     const max = getMaxTotal();
     if (totalSelected() > max){
       selections = {};
@@ -396,6 +438,12 @@
 
   submitBtn.addEventListener('click', async () => {
     clearMessage();
+
+    if (isClosed()){
+      showClosedScreen();
+      return;
+    }
+
     const name = nameInput.value.trim();
     const maxTotal = getMaxTotal();
 
