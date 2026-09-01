@@ -289,6 +289,7 @@
   <header>
     <h1>에버랜드 이용쿠폰 신청</h1>
     <p>본인 포함 인원 수만큼 이용쿠폰을 선택해주세요(1인당 1장). 같은 쿠폰을 여러 장 고를 수 있고, 남은 수량이 없는 쿠폰은 선택할 수 없어요.</p>
+    <p id="limitNotice" class="deadline-notice hidden"></p>
     <p id="deadlineNotice" class="deadline-notice hidden"></p>
   </header>
 
@@ -385,6 +386,16 @@
     const data = snap.data();
     deadline = data && data.deadline ? data.deadline.toDate() : null;
     maxAllowedTotal = data && typeof data.maxAllowedTotal === 'number' ? data.maxAllowedTotal : null;
+
+    const limitNotice = document.getElementById('limitNotice');
+    if (limitNotice){
+      if (maxAllowedTotal){
+        limitNotice.textContent = `👥 신청자당 총인원 ${maxAllowedTotal}명까지 신청할 수 있습니다.`;
+        limitNotice.classList.remove('hidden');
+      } else {
+        limitNotice.classList.add('hidden');
+      }
+    }
 
     const notice = document.getElementById('deadlineNotice');
     if (notice){
