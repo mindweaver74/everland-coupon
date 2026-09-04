@@ -343,9 +343,11 @@
 
   let coupons = [];        // [{id, name, capacity, claimed}]
   let selections = {};     // {couponId: count}
+  let startAt = null;      // Date | null
   let deadline = null;     // Date | null
   let maxAllowedTotal = null; // number | null — 참가자당 최대 총인원 제한
   let closedShown = false;
+  let notYetOpenShown = false;
   const totalHint = document.getElementById('totalHint');
 
   function showMessage(text, type='error'){
@@ -366,8 +368,24 @@
     return Object.values(selections).reduce((a,b)=>a+b,0);
   }
 
+  function isNotYetOpen(){
+    return !!(startAt && new Date() < startAt);
+  }
+
   function isClosed(){
     return !!(deadline && new Date() > deadline);
+  }
+
+  function showNotYetOpenScreen(){
+    if (notYetOpenShown) return;
+    notYetOpenShown = true;
+    const dateStr = startAt.toLocaleString('ko-KR');
+    pageEl.innerHTML = `
+      <div class="closed-screen">
+        <div class="mark">⏳</div>
+        <h2>아직 신청 기간이 아닙니다</h2>
+        <p>신청 시작: ${dateStr}부터<br/>문의사항은 운영진에게 연락해주세요.</p>
+      </div>`;
   }
 
   function showClosedScreen(){
@@ -384,6 +402,7 @@
 
   onSnapshot(doc(db, 'settings', 'config'), (snap) => {
     const data = snap.data();
+    startAt = data && data.startAt ? data.startAt.toDate() : null;
     deadline = data && data.deadline ? data.deadline.toDate() : null;
     maxAllowedTotal = data && typeof data.maxAllowedTotal === 'number' ? data.maxAllowedTotal : null;
 
@@ -399,15 +418,23 @@
 
     const notice = document.getElementById('deadlineNotice');
     if (notice){
-      if (deadline){
-        notice.textContent = `⏰ 신청 마감: ${deadline.toLocaleString('ko-KR', { year:'numeric', month:'long', day:'numeric', hour:'2-digit', minute:'2-digit' })}까지`;
+      const fmt = d => d.toLocaleString('ko-KR', { year:'numeric', month:'long', day:'numeric', hour:'2-digit', minute:'2-digit' });
+      if (startAt && deadline){
+        notice.textContent = `⏰ 신청 기간: ${fmt(startAt)} ~ ${fmt(deadline)}`;
+        notice.classList.remove('hidden');
+      } else if (deadline){
+        notice.textContent = `⏰ 신청 마감: ${fmt(deadline)}까지`;
+        notice.classList.remove('hidden');
+      } else if (startAt){
+        notice.textContent = `⏰ 신청 시작: ${fmt(startAt)}부터`;
         notice.classList.remove('hidden');
       } else {
         notice.classList.add('hidden');
       }
     }
 
-    if (isClosed()) showClosedScreen();
+    if (isNotYetOpen()) showNotYetOpenScreen();
+    else if (isClosed()) showClosedScreen();
     render();
   });
 
@@ -514,6 +541,10 @@
   submitBtn.addEventListener('click', async () => {
     clearMessage();
 
+    if (isNotYetOpen()){
+      showNotYetOpenScreen();
+      return;
+    }
     if (isClosed()){
       showClosedScreen();
       return;

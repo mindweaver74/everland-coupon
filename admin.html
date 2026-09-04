@@ -66,12 +66,23 @@
   <p class="sub">쿠폰 구성 및 정원을 관리하고, 실시간 신청 현황을 확인합니다.</p>
 
   <div class="card">
-    <h2>신청 마감 시각</h2>
-    <p class="sub" style="margin-bottom:14px;">이 시각이 지나면 참가자가 더 이상 새로 신청할 수 없어요. 비워두면 마감 없이 항상 신청 가능합니다.</p>
-    <div style="display:flex;gap:8px;align-items:center;">
-      <input type="datetime-local" id="editDeadlineInput" style="flex:1;" />
-      <button class="primary" id="saveDeadlineBtn">저장</button>
-      <button id="clearDeadlineBtn">마감 없음</button>
+    <h2>신청 기간</h2>
+    <p class="sub" style="margin-bottom:14px;">시작 시각 전이나 마감 시각 이후에는 참가자가 신청할 수 없어요. 비워두면 해당 제한 없이 항상 신청 가능합니다.</p>
+    <div style="margin-bottom:12px;">
+      <label style="font-size:12.5px;color:var(--muted);font-weight:600;display:block;margin-bottom:6px;">시작 일시</label>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <input type="datetime-local" id="startAtInput" style="flex:1;" />
+        <button class="primary" id="saveStartAtBtn">저장</button>
+        <button id="clearStartAtBtn">시작 없음</button>
+      </div>
+    </div>
+    <div>
+      <label style="font-size:12.5px;color:var(--muted);font-weight:600;display:block;margin-bottom:6px;">마감 일시</label>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <input type="datetime-local" id="editDeadlineInput" style="flex:1;" />
+        <button class="primary" id="saveDeadlineBtn">저장</button>
+        <button id="clearDeadlineBtn">마감 없음</button>
+      </div>
     </div>
   </div>
 
@@ -410,7 +421,8 @@
     }
   };
 
-  // ---- 수정 마감 시각 ----
+  // ---- 신청 기간 (시작/마감) ----
+  const startAtInput = document.getElementById('startAtInput');
   const editDeadlineInput = document.getElementById('editDeadlineInput');
   const maxTotalInput = document.getElementById('maxTotalInput');
 
@@ -421,8 +433,15 @@
 
   onSnapshot(doc(db, 'settings', 'config'), (snap) => {
     const data = snap.data();
+    if (data && data.startAt){
+      startAtInput.value = toLocalInputValue(data.startAt.toDate());
+    } else {
+      startAtInput.value = '';
+    }
     if (data && data.deadline){
       editDeadlineInput.value = toLocalInputValue(data.deadline.toDate());
+    } else {
+      editDeadlineInput.value = '';
     }
     if (data && typeof data.maxAllowedTotal === 'number'){
       maxTotalInput.value = data.maxAllowedTotal;
@@ -430,6 +449,24 @@
       maxTotalInput.value = '';
     }
   });
+
+  document.getElementById('saveStartAtBtn').onclick = async () => {
+    if (!startAtInput.value){
+      alert('날짜와 시각을 선택해주세요.');
+      return;
+    }
+    await setDoc(doc(db, 'settings', 'config'), {
+      startAt: Timestamp.fromDate(new Date(startAtInput.value))
+    }, { merge: true });
+    alert('신청 시작 시각이 저장되었습니다.');
+  };
+
+  document.getElementById('clearStartAtBtn').onclick = async () => {
+    if (!confirm('시작 시각 제한을 없애고 바로 신청 가능하게 할까요?')) return;
+    await setDoc(doc(db, 'settings', 'config'), { startAt: null }, { merge: true });
+    startAtInput.value = '';
+    alert('시작 시각 제한이 해제되었습니다.');
+  };
 
   document.getElementById('saveDeadlineBtn').onclick = async () => {
     if (!editDeadlineInput.value){
