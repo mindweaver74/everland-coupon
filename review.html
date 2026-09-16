@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>에버랜드 행사 후기 평가</title>
+<style>
+  :root{
+    --bg:#FFF7EC;
+    --surface:#FFFFFF;
+    --ink:#1F2A44;
+    --muted:#7A7268;
+    --accent:#FF6B35;
+    --accent-dark:#E0501C;
+    --line:#F0E6D8;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#241C14;
+      --surface:#2E251A;
+      --ink:#F5EFE6;
+      --muted:#B8AA98;
+      --line:#42362A;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#241C14;
+    --surface:#2E251A;
+    --ink:#F5EFE6;
+    --muted:#B8AA98;
+    --line:#42362A;
+  }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0;
+    min-height:100vh;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:-apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+  }
+  .card{
+    width:100%;
+    max-width:420px;
+    background:var(--surface);
+    border-radius:20px;
+    padding:32px 26px;
+    box-shadow:0 10px 30px rgba(0,0,0,0.08);
+    text-align:center;
+  }
+  .card h1{
+    font-size:20px;
+    margin:0 0 8px;
+  }
+  .card p.sub{
+    font-size:13.5px;
+    color:var(--muted);
+    margin:0 0 26px;
+    line-height:1.6;
+  }
+  .scale{
+    display:grid;
+    grid-template-columns:repeat(5, 1fr);
+    gap:10px;
+    margin-bottom:8px;
+  }
+  .score-btn{
+    padding:14px 0;
+    border-radius:12px;
+    border:2px solid var(--line);
+    background:var(--bg);
+    color:var(--ink);
+    font-size:16px;
+    font-weight:700;
+    cursor:pointer;
+    transition:transform 0.08s ease, border-color 0.15s ease;
+  }
+  .score-btn:hover{
+    border-color:var(--accent);
+    transform:translateY(-2px);
+  }
+  .score-btn:active{
+    transform:translateY(0);
+  }
+  .score-labels{
+    display:flex;
+    justify-content:space-between;
+    font-size:11.5px;
+    color:var(--muted);
+    margin:10px 2px 0;
+  }
+
+  .count-badge{
+    display:inline-block;
+    background:#FFF0E0;
+    color:var(--accent-dark);
+    font-size:12px;
+    font-weight:700;
+    padding:5px 12px;
+    border-radius:999px;
+    margin:0 0 22px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]) .count-badge{
+      background:#3A2A18;
+      color:#FFB37A;
+    }
+  }
+  :root[data-theme="dark"] .count-badge{
+    background:#3A2A18;
+    color:#FFB37A;
+  }
+
+  .scale.disabled{
+    opacity:0.4;
+    pointer-events:none;
+  }
+
+  .overlay{
+    position:fixed;
+    inset:0;
+    background:rgba(20,14,8,0.55);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+    z-index:10;
+  }
+  .hidden{ display:none !important; }
+  .modal{
+    background:var(--surface);
+    border-radius:18px;
+    max-width:340px;
+    width:100%;
+    padding:28px 24px 22px;
+    text-align:center;
+    animation:pop 0.18s ease;
+  }
+  @keyframes pop{
+    from{ transform:scale(0.92); opacity:0; }
+    to{ transform:scale(1); opacity:1; }
+  }
+  .modal .emoji{
+    font-size:42px;
+    margin-bottom:14px;
+    line-height:1;
+  }
+  .modal p{
+    font-size:15px;
+    line-height:1.6;
+    margin:0 0 22px;
+    white-space:pre-line;
+  }
+  .modal button{
+    width:100%;
+    padding:12px;
+    border:none;
+    border-radius:10px;
+    background:var(--accent);
+    color:#fff;
+    font-size:14.5px;
+    font-weight:700;
+    cursor:pointer;
+  }
+  .modal.success .emoji{ }
+  .modal.success button{ background:#2FA875; }
+
+  .done{
+    padding:20px 0 6px;
+  }
+  .done .emoji{ font-size:48px; margin-bottom:12px; }
+  .done h2{ font-size:18px; margin:0 0 8px; }
+  .done p{ font-size:13.5px; color:var(--muted); margin:0; }
+</style>
+</head>
+<body>
+
+<div class="card" id="card">
+  <h1>에버랜드 행사, 어떠셨나요?</h1>
+  <p class="sub">솔직한 점수를 1~10점 사이에서 골라주세요 🙂</p>
+  <p class="count-badge" id="countBadge"></p>
+
+  <div class="scale" id="scale">
+    <button class="score-btn" data-score="1">1</button>
+    <button class="score-btn" data-score="2">2</button>
+    <button class="score-btn" data-score="3">3</button>
+    <button class="score-btn" data-score="4">4</button>
+    <button class="score-btn" data-score="5">5</button>
+    <button class="score-btn" data-score="6">6</button>
+    <button class="score-btn" data-score="7">7</button>
+    <button class="score-btn" data-score="8">8</button>
+    <button class="score-btn" data-score="9">9</button>
+    <button class="score-btn" data-score="10">10</button>
+  </div>
+  <div class="score-labels">
+    <span>별로였어요</span>
+    <span>최고였어요</span>
+  </div>
+</div>
+
+<div class="overlay hidden" id="overlay">
+  <div class="modal" id="modal">
+    <div class="emoji" id="modalEmoji"></div>
+    <p id="modalText"></p>
+    <button id="modalBtn">확인</button>
+  </div>
+</div>
+
+<script type="module">
+  import { db } from "./firebase-config.js";
+  import {
+    collection, addDoc, doc, onSnapshot, increment, setDoc, serverTimestamp
+  } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
+
+  const card = document.getElementById('card');
+  const scale = document.getElementById('scale');
+  const overlay = document.getElementById('overlay');
+  const modal = document.getElementById('modal');
+  const modalEmoji = document.getElementById('modalEmoji');
+  const modalText = document.getElementById('modalText');
+  const modalBtn = document.getElementById('modalBtn');
+  const countBadge = document.getElementById('countBadge');
+
+  onSnapshot(doc(db, 'settings', 'reviewStats'), (snap) => {
+    const count = snap.exists() && typeof snap.data().count === 'number' ? snap.data().count : 0;
+    countBadge.textContent = `지금까지 ${count}명이 참여했어요`;
+  });
+
+  const responses = {
+    1: { emoji: '😢', text: '에버랜드 행사가\n정말.. 재미없었나요?' },
+    2: { emoji: '😢', text: '에버랜드 행사가\n정말.. 재미없었나요?' },
+    3: { emoji: '😢', text: '에버랜드 행사가\n정말.. 재미없었나요?' },
+    4: { emoji: '😢', text: '에버랜드 행사가\n정말.. 재미없었나요?' },
+    5: { emoji: '😢', text: '에버랜드 행사가\n정말.. 재미없었나요?' },
+    6: { emoji: '🥺', text: '혹시.. 4점만 더\n생각해볼 수 없을까요..?' },
+    7: { emoji: '🙏', text: '딱 3점만 더 써요..\n제발요.. 🥲' },
+    8: { emoji: '👉👈', text: '이제 2점 남았는데..' },
+    9: { emoji: '😤', text: '그러지 말고\n1점만 더 줘요.' },
+    10:{ emoji: '🙏✨', text: '감사합니다.\n복 받으실 거예요.' }
+  };
+
+  let pendingScore = null;
+  let attempts = []; // 10점 전에 눌렀다가 거절당한 점수들
+
+  scale.addEventListener('click', (e) => {
+    const btn = e.target.closest('.score-btn');
+    if (!btn) return;
+    const score = Number(btn.dataset.score);
+    pendingScore = score;
+    const r = responses[score];
+
+    modal.classList.toggle('success', score === 10);
+    modalEmoji.textContent = r.emoji;
+    modalText.textContent = r.text;
+    overlay.classList.remove('hidden');
+  });
+
+  modalBtn.addEventListener('click', async () => {
+    overlay.classList.add('hidden');
+
+    if (pendingScore !== 10){
+      attempts.push(pendingScore);
+      pendingScore = null;
+      return;
+    }
+
+    modalBtn.disabled = true;
+
+    try {
+      await addDoc(collection(db, 'reviews'), {
+        finalScore: 10,
+        attemptCount: attempts.length,
+        attemptHistory: attempts,
+        submittedAt: serverTimestamp()
+      });
+      await setDoc(doc(db, 'settings', 'reviewStats'), {
+        count: increment(1)
+      }, { merge: true });
+    } catch (err) {
+      // 저장에 실패해도 참가자 경험(진행)은 막지 않고, 콘솔에만 남긴다
+      console.error('리뷰 저장 실패:', err);
+    }
+
+    card.innerHTML = `
+      <div class="done">
+        <div class="emoji">🎉</div>
+        <h2>후기가 제출됐어요!</h2>
+        <p>솔직한 10점, 감사합니다.</p>
+      </div>`;
+
+    pendingScore = null;
+    modalBtn.disabled = false;
+  });
+</script>
+</body>
+</html>
