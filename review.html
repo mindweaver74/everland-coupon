@@ -30,7 +30,7 @@
     --muted:#B8AA98;
     --line:#42362A;
   }
-  *{ box-sizing:border-box; }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   body{
     margin:0;
     min-height:100vh;
@@ -50,49 +50,19 @@
     padding:32px 26px;
     box-shadow:0 10px 30px rgba(0,0,0,0.08);
     text-align:center;
+    position:relative;
   }
   .card h1{
-    font-size:20px;
+    font-size:19px;
     margin:0 0 8px;
+    line-height:1.4;
   }
   .card p.sub{
     font-size:13.5px;
     color:var(--muted);
-    margin:0 0 26px;
+    margin:0 0 4px;
     line-height:1.6;
   }
-  .scale{
-    display:grid;
-    grid-template-columns:repeat(5, 1fr);
-    gap:10px;
-    margin-bottom:8px;
-  }
-  .score-btn{
-    padding:14px 0;
-    border-radius:12px;
-    border:2px solid var(--line);
-    background:var(--bg);
-    color:var(--ink);
-    font-size:16px;
-    font-weight:700;
-    cursor:pointer;
-    transition:transform 0.08s ease, border-color 0.15s ease;
-  }
-  .score-btn:hover{
-    border-color:var(--accent);
-    transform:translateY(-2px);
-  }
-  .score-btn:active{
-    transform:translateY(0);
-  }
-  .score-labels{
-    display:flex;
-    justify-content:space-between;
-    font-size:11.5px;
-    color:var(--muted);
-    margin:10px 2px 0;
-  }
-
   .count-badge{
     display:inline-block;
     background:#FFF0E0;
@@ -101,7 +71,7 @@
     font-weight:700;
     padding:5px 12px;
     border-radius:999px;
-    margin:0 0 22px;
+    margin:14px 0 22px;
   }
   @media (prefers-color-scheme: dark){
     :root:not([data-theme="light"]) .count-badge{
@@ -114,63 +84,80 @@
     color:#FFB37A;
   }
 
-  .scale.disabled{
-    opacity:0.4;
-    pointer-events:none;
-  }
-
-  .overlay{
-    position:fixed;
-    inset:0;
-    background:rgba(20,14,8,0.55);
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    padding:24px;
-    z-index:10;
-  }
-  .hidden{ display:none !important; }
-  .modal{
-    background:var(--surface);
-    border-radius:18px;
-    max-width:340px;
+  .dodge-zone{
+    position:relative;
     width:100%;
-    padding:28px 24px 22px;
-    text-align:center;
-    animation:pop 0.18s ease;
-  }
-  @keyframes pop{
-    from{ transform:scale(0.92); opacity:0; }
-    to{ transform:scale(1); opacity:1; }
-  }
-  .modal .emoji{
-    font-size:42px;
+    height:190px;
     margin-bottom:14px;
-    line-height:1;
   }
-  .modal p{
-    font-size:15px;
-    line-height:1.6;
-    margin:0 0 22px;
-    white-space:pre-line;
-  }
-  .modal button{
-    width:100%;
-    padding:12px;
-    border:none;
-    border-radius:10px;
-    background:var(--accent);
-    color:#fff;
-    font-size:14.5px;
+  .dodge-btn{
+    position:absolute;
+    width:64px;
+    height:50px;
+    border-radius:12px;
+    border:2px solid var(--line);
+    background:var(--bg);
+    color:var(--ink);
+    font-size:16px;
     font-weight:700;
     cursor:pointer;
+    transition:left 0.22s cubic-bezier(.34,1.56,.64,1), top 0.22s cubic-bezier(.34,1.56,.64,1);
+    touch-action:manipulation;
   }
-  .modal.success .emoji{ }
-  .modal.success button{ background:#2FA875; }
+  .dodge-btn:hover{ border-color:var(--accent); }
 
-  .done{
-    padding:20px 0 6px;
+  .fixed-scale{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:12px;
+    margin-bottom:8px;
   }
+  .fixed-btn{
+    padding:16px 0;
+    border-radius:12px;
+    border:2px solid var(--line);
+    background:var(--bg);
+    color:var(--ink);
+    font-size:17px;
+    font-weight:700;
+    cursor:pointer;
+    transition:transform 0.08s ease, border-color 0.15s ease;
+  }
+  .fixed-btn:hover{ border-color:#2FA875; transform:translateY(-2px); }
+
+  .score-labels{
+    display:flex;
+    justify-content:space-between;
+    font-size:11.5px;
+    color:var(--muted);
+    margin:10px 2px 0;
+  }
+
+  .toast{
+    position:absolute;
+    left:50%;
+    top:-14px;
+    transform:translate(-50%, -100%);
+    background:var(--ink);
+    color:var(--surface);
+    font-size:13px;
+    font-weight:600;
+    padding:10px 16px;
+    border-radius:10px;
+    white-space:nowrap;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity 0.18s ease, transform 0.18s ease;
+    max-width:90%;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .toast.show{
+    opacity:1;
+    transform:translate(-50%, -115%);
+  }
+
+  .done{ padding:20px 0 6px; }
   .done .emoji{ font-size:48px; margin-bottom:12px; }
   .done h2{ font-size:18px; margin:0 0 8px; }
   .done p{ font-size:13.5px; color:var(--muted); margin:0; }
@@ -179,33 +166,30 @@
 <body>
 
 <div class="card" id="card">
+  <div class="toast" id="toast"></div>
   <h1>에버랜드 행사, 완벽했다고 말해주세요!!!</h1>
   <p class="sub">솔직한 점수를 1~10점 사이에서 골라주세요 🙂</p>
   <p class="count-badge" id="countBadge"></p>
 
-  <div class="scale" id="scale">
-    <button class="score-btn" data-score="1">1</button>
-    <button class="score-btn" data-score="2">2</button>
-    <button class="score-btn" data-score="3">3</button>
-    <button class="score-btn" data-score="4">4</button>
-    <button class="score-btn" data-score="5">5</button>
-    <button class="score-btn" data-score="6">6</button>
-    <button class="score-btn" data-score="7">7</button>
-    <button class="score-btn" data-score="8">8</button>
-    <button class="score-btn" data-score="9">9</button>
-    <button class="score-btn" data-score="10">10</button>
+  <div class="dodge-zone" id="dodgeZone">
+    <button class="dodge-btn" data-score="1">1</button>
+    <button class="dodge-btn" data-score="2">2</button>
+    <button class="dodge-btn" data-score="3">3</button>
+    <button class="dodge-btn" data-score="4">4</button>
+    <button class="dodge-btn" data-score="5">5</button>
+    <button class="dodge-btn" data-score="6">6</button>
+    <button class="dodge-btn" data-score="7">7</button>
+    <button class="dodge-btn" data-score="8">8</button>
   </div>
+
+  <div class="fixed-scale">
+    <button class="fixed-btn" data-score="9">9</button>
+    <button class="fixed-btn" data-score="10">10</button>
+  </div>
+
   <div class="score-labels">
     <span>별로였어요</span>
     <span>최고였어요</span>
-  </div>
-</div>
-
-<div class="overlay hidden" id="overlay">
-  <div class="modal" id="modal">
-    <div class="emoji" id="modalEmoji"></div>
-    <p id="modalText"></p>
-    <button id="modalBtn">확인</button>
   </div>
 </div>
 
@@ -216,83 +200,110 @@
   } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
 
   const card = document.getElementById('card');
-  const scale = document.getElementById('scale');
-  const overlay = document.getElementById('overlay');
-  const modal = document.getElementById('modal');
-  const modalEmoji = document.getElementById('modalEmoji');
-  const modalText = document.getElementById('modalText');
-  const modalBtn = document.getElementById('modalBtn');
+  const dodgeZone = document.getElementById('dodgeZone');
+  const toast = document.getElementById('toast');
   const countBadge = document.getElementById('countBadge');
+
+  const dodgeMessages = {
+    1: '정말 1점인가요?',
+    2: '정말 2점인가요?',
+    3: '정말 3점인가요?',
+    4: '정말 4점인가요?',
+    5: '정말 5점인가요?',
+    6: '4점정도는 더 줘도 되지 않나요?',
+    7: '3점 더주실 생각 없으신가요?',
+    8: '2점더주셔도 티는 안나요?'
+  };
+
+  let attempts = [];
+  let toastTimer = null;
+
+  function showToast(text){
+    toast.textContent = text;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('show'), 1400);
+  }
+
+  function randomPosition(btn){
+    const zoneW = dodgeZone.clientWidth;
+    const zoneH = dodgeZone.clientHeight;
+    const btnW = btn.offsetWidth || 64;
+    const btnH = btn.offsetHeight || 50;
+    const maxLeft = Math.max(0, zoneW - btnW);
+    const maxTop = Math.max(0, zoneH - btnH);
+    return {
+      left: Math.random() * maxLeft,
+      top: Math.random() * maxTop
+    };
+  }
+
+  function placeInitial(){
+    const btns = dodgeZone.querySelectorAll('.dodge-btn');
+    const cols = 4;
+    const zoneW = dodgeZone.clientWidth;
+    const cellW = zoneW / cols;
+    const cellH = 70;
+    btns.forEach((btn, i) => {
+      const row = Math.floor(i / cols);
+      const col = i % cols;
+      const btnW = 64, btnH = 50;
+      const left = col * cellW + (cellW - btnW) / 2;
+      const top = row * cellH + 10;
+      btn.style.left = left + 'px';
+      btn.style.top = top + 'px';
+    });
+  }
+
+  function dodge(btn){
+    const score = Number(btn.dataset.score);
+    const pos = randomPosition(btn);
+    btn.style.left = pos.left + 'px';
+    btn.style.top = pos.top + 'px';
+    showToast(dodgeMessages[score]);
+    attempts.push(score);
+  }
+
+  dodgeZone.querySelectorAll('.dodge-btn').forEach(btn => {
+    btn.addEventListener('mouseenter', () => dodge(btn));
+    btn.addEventListener('touchstart', (e) => { e.preventDefault(); dodge(btn); }, { passive: false });
+    btn.addEventListener('click', (e) => { e.preventDefault(); dodge(btn); });
+  });
+
+  window.addEventListener('resize', placeInitial);
+  placeInitial();
 
   onSnapshot(doc(db, 'settings', 'reviewStats'), (snap) => {
     const count = snap.exists() && typeof snap.data().count === 'number' ? snap.data().count : 0;
     countBadge.textContent = `지금까지 ${count}명이 참여했어요`;
   });
 
-  const responses = {
-    1: { emoji: '😢', text: '에버랜드 행사가\n정말.. 재미없었나요?' },
-    2: { emoji: '😢', text: '에버랜드 행사가\n정말.. 재미없었나요?' },
-    3: { emoji: '😢', text: '에버랜드 행사가\n정말.. 재미없었나요?' },
-    4: { emoji: '😢', text: '에버랜드 행사가\n정말.. 재미없었나요?' },
-    5: { emoji: '😢', text: '에버랜드 행사가\n정말.. 재미없었나요?' },
-    6: { emoji: '🥺', text: '혹시.. 4점만 더\n생각해볼 수 없을까요..?' },
-    7: { emoji: '🙏', text: '딱 3점만 더 써요..\n제발요.. 🥲' },
-    8: { emoji: '👉👈', text: '이제 2점 남았는데..' },
-    9: { emoji: '😤', text: '그러지 말고\n1점만 더 줘요.' },
-    10:{ emoji: '🙏✨', text: '감사합니다.\n복 받으실 거예요.' }
-  };
+  document.querySelectorAll('.fixed-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const score = Number(btn.dataset.score);
+      document.querySelectorAll('.fixed-btn').forEach(b => b.disabled = true);
 
-  let pendingScore = null;
-  let attempts = []; // 10점 전에 눌렀다가 거절당한 점수들
+      try {
+        await addDoc(collection(db, 'reviews'), {
+          finalScore: score,
+          attemptCount: attempts.length,
+          attemptHistory: attempts,
+          submittedAt: serverTimestamp()
+        });
+        await setDoc(doc(db, 'settings', 'reviewStats'), {
+          count: increment(1)
+        }, { merge: true });
+      } catch (err) {
+        console.error('리뷰 저장 실패:', err);
+      }
 
-  scale.addEventListener('click', (e) => {
-    const btn = e.target.closest('.score-btn');
-    if (!btn) return;
-    const score = Number(btn.dataset.score);
-    pendingScore = score;
-    const r = responses[score];
-
-    modal.classList.toggle('success', score === 10);
-    modalEmoji.textContent = r.emoji;
-    modalText.textContent = r.text;
-    overlay.classList.remove('hidden');
-  });
-
-  modalBtn.addEventListener('click', async () => {
-    overlay.classList.add('hidden');
-
-    if (pendingScore !== 10){
-      attempts.push(pendingScore);
-      pendingScore = null;
-      return;
-    }
-
-    modalBtn.disabled = true;
-
-    try {
-      await addDoc(collection(db, 'reviews'), {
-        finalScore: 10,
-        attemptCount: attempts.length,
-        attemptHistory: attempts,
-        submittedAt: serverTimestamp()
-      });
-      await setDoc(doc(db, 'settings', 'reviewStats'), {
-        count: increment(1)
-      }, { merge: true });
-    } catch (err) {
-      // 저장에 실패해도 참가자 경험(진행)은 막지 않고, 콘솔에만 남긴다
-      console.error('리뷰 저장 실패:', err);
-    }
-
-    card.innerHTML = `
-      <div class="done">
-        <div class="emoji">🎉</div>
-        <h2>후기가 제출됐어요!</h2>
-        <p>솔직한 10점, 감사합니다.</p>
-      </div>`;
-
-    pendingScore = null;
-    modalBtn.disabled = false;
+      card.innerHTML = `
+        <div class="done">
+          <div class="emoji">🎉</div>
+          <h2>감사합니다!</h2>
+          <p>${score}점이 접수되었습니다.</p>
+        </div>`;
+    });
   });
 </script>
 </body>
