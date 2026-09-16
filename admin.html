@@ -124,6 +124,19 @@
     </table>
     <div class="empty" id="submissionEmpty" style="display:none;">아직 신청 내역이 없습니다.</div>
   </div>
+
+  <div class="card">
+    <h2>행사 후기 평가 현황</h2>
+    <p class="sub" style="margin-bottom:14px;">10점을 제출한 사람만 기록됩니다 (익명, 이름 없음).</p>
+    <p style="font-size:14px; font-weight:700; margin:0 0 14px;">
+      총 참여 인원: <span id="reviewCount">0</span>명
+    </p>
+    <table>
+      <thead><tr><th style="width:60px;">번호</th><th style="width:110px;">버틴 횟수</th><th>시도했던 점수들</th><th style="width:160px;">제출 시각</th></tr></thead>
+      <tbody id="reviewTable"></tbody>
+    </table>
+    <div class="empty" id="reviewEmpty" style="display:none;">아직 제출된 후기가 없습니다.</div>
+  </div>
 </div>
 
 <script type="module">
@@ -503,6 +516,38 @@
     maxTotalInput.value = '';
     alert('총인원 제한이 해제되었습니다.');
   };
+
+  // ---- 행사 후기 평가 현황 ----
+  const reviewTable = document.getElementById('reviewTable');
+  const reviewCountEl = document.getElementById('reviewCount');
+  const reviewEmpty = document.getElementById('reviewEmpty');
+
+  onSnapshot(collection(db, 'reviews'), (snap) => {
+    const reviews = snap.docs
+      .map(d => d.data())
+      .sort((a, b) => {
+        const ta = a.submittedAt?.toDate ? a.submittedAt.toDate().getTime() : 0;
+        const tb = b.submittedAt?.toDate ? b.submittedAt.toDate().getTime() : 0;
+        return ta - tb;
+      });
+
+    reviewCountEl.textContent = reviews.length;
+    reviewEmpty.style.display = reviews.length === 0 ? 'block' : 'none';
+
+    reviewTable.innerHTML = '';
+    reviews.forEach((r, i) => {
+      const time = r.submittedAt?.toDate ? r.submittedAt.toDate().toLocaleString('ko-KR') : '-';
+      const history = (r.attemptHistory || []).join(', ') || '-';
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${i + 1}</td>
+        <td>${r.attemptCount ?? 0}회</td>
+        <td>${history}</td>
+        <td>${time}</td>
+      `;
+      reviewTable.appendChild(tr);
+    });
+  });
 </script>
 </body>
 </html>
