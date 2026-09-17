@@ -51,6 +51,7 @@
     box-shadow:0 10px 30px rgba(0,0,0,0.08);
     text-align:center;
     position:relative;
+    overflow:visible;
   }
   .card h1{
     font-size:19px;
@@ -71,7 +72,7 @@
     font-weight:700;
     padding:5px 12px;
     border-radius:999px;
-    margin:14px 0 22px;
+    margin:14px 0 24px;
   }
   @media (prefers-color-scheme: dark){
     :root:not([data-theme="light"]) .count-badge{
@@ -84,16 +85,15 @@
     color:#FFB37A;
   }
 
-  .dodge-zone{
+  .scale{
+    display:grid;
+    grid-template-columns:repeat(5, 1fr);
+    gap:10px;
+    margin-bottom:8px;
     position:relative;
-    width:100%;
-    height:190px;
-    margin-bottom:14px;
   }
-  .dodge-btn{
-    position:absolute;
-    width:64px;
-    height:50px;
+  .score-btn{
+    padding:14px 0;
     border-radius:12px;
     border:2px solid var(--line);
     background:var(--bg);
@@ -101,29 +101,17 @@
     font-size:16px;
     font-weight:700;
     cursor:pointer;
-    transition:left 0.22s cubic-bezier(.34,1.56,.64,1), top 0.22s cubic-bezier(.34,1.56,.64,1);
-    touch-action:manipulation;
-  }
-  .dodge-btn:hover{ border-color:var(--accent); }
-
-  .fixed-scale{
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:12px;
-    margin-bottom:8px;
-  }
-  .fixed-btn{
-    padding:16px 0;
-    border-radius:12px;
-    border:2px solid var(--line);
-    background:var(--bg);
-    color:var(--ink);
-    font-size:17px;
-    font-weight:700;
-    cursor:pointer;
+    position:relative;
     transition:transform 0.08s ease, border-color 0.15s ease;
   }
-  .fixed-btn:hover{ border-color:#2FA875; transform:translateY(-2px); }
+  .score-btn.dodge{
+    transition:transform 0.55s cubic-bezier(.22,1.4,.36,1);
+    z-index:5;
+  }
+  .score-btn.accept:hover{
+    border-color:#2FA875;
+    transform:translateY(-2px);
+  }
 
   .score-labels{
     display:flex;
@@ -151,6 +139,7 @@
     max-width:90%;
     overflow:hidden;
     text-overflow:ellipsis;
+    z-index:20;
   }
   .toast.show{
     opacity:1;
@@ -171,20 +160,17 @@
   <p class="sub">솔직한 점수를 1~10점 사이에서 골라주세요 🙂</p>
   <p class="count-badge" id="countBadge"></p>
 
-  <div class="dodge-zone" id="dodgeZone">
-    <button class="dodge-btn" data-score="1">1</button>
-    <button class="dodge-btn" data-score="2">2</button>
-    <button class="dodge-btn" data-score="3">3</button>
-    <button class="dodge-btn" data-score="4">4</button>
-    <button class="dodge-btn" data-score="5">5</button>
-    <button class="dodge-btn" data-score="6">6</button>
-    <button class="dodge-btn" data-score="7">7</button>
-    <button class="dodge-btn" data-score="8">8</button>
-  </div>
-
-  <div class="fixed-scale">
-    <button class="fixed-btn" data-score="9">9</button>
-    <button class="fixed-btn" data-score="10">10</button>
+  <div class="scale" id="scale">
+    <button class="score-btn dodge" data-score="1">1</button>
+    <button class="score-btn dodge" data-score="2">2</button>
+    <button class="score-btn dodge" data-score="3">3</button>
+    <button class="score-btn dodge" data-score="4">4</button>
+    <button class="score-btn dodge" data-score="5">5</button>
+    <button class="score-btn dodge" data-score="6">6</button>
+    <button class="score-btn dodge" data-score="7">7</button>
+    <button class="score-btn dodge" data-score="8">8</button>
+    <button class="score-btn accept" data-score="9">9</button>
+    <button class="score-btn accept" data-score="10">10</button>
   </div>
 
   <div class="score-labels">
@@ -200,7 +186,7 @@
   } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
 
   const card = document.getElementById('card');
-  const dodgeZone = document.getElementById('dodgeZone');
+  const scale = document.getElementById('scale');
   const toast = document.getElementById('toast');
   const countBadge = document.getElementById('countBadge');
 
@@ -217,6 +203,7 @@
 
   let attempts = [];
   let toastTimer = null;
+  const returnTimers = new WeakMap();
 
   function showToast(text){
     toast.textContent = text;
@@ -225,63 +212,38 @@
     toastTimer = setTimeout(() => toast.classList.remove('show'), 1400);
   }
 
-  function randomPosition(btn){
-    const zoneW = dodgeZone.clientWidth;
-    const zoneH = dodgeZone.clientHeight;
-    const btnW = btn.offsetWidth || 64;
-    const btnH = btn.offsetHeight || 50;
-    const maxLeft = Math.max(0, zoneW - btnW);
-    const maxTop = Math.max(0, zoneH - btnH);
-    return {
-      left: Math.random() * maxLeft,
-      top: Math.random() * maxTop
-    };
-  }
-
-  function placeInitial(){
-    const btns = dodgeZone.querySelectorAll('.dodge-btn');
-    const cols = 4;
-    const zoneW = dodgeZone.clientWidth;
-    const cellW = zoneW / cols;
-    const cellH = 70;
-    btns.forEach((btn, i) => {
-      const row = Math.floor(i / cols);
-      const col = i % cols;
-      const btnW = 64, btnH = 50;
-      const left = col * cellW + (cellW - btnW) / 2;
-      const top = row * cellH + 10;
-      btn.style.left = left + 'px';
-      btn.style.top = top + 'px';
-    });
-  }
-
   function dodge(btn){
     const score = Number(btn.dataset.score);
-    const pos = randomPosition(btn);
-    btn.style.left = pos.left + 'px';
-    btn.style.top = pos.top + 'px';
+
+    const dx = (Math.random() - 0.5) * 140; // 좌우 최대 ±70px
+    const dy = (Math.random() < 0.5 ? -1 : 1) * (30 + Math.random() * 40); // 위/아래 30~70px
+    btn.style.transform = `translate(${dx}px, ${dy}px)`;
+
     showToast(dodgeMessages[score]);
     attempts.push(score);
+
+    clearTimeout(returnTimers.get(btn));
+    const t = setTimeout(() => {
+      btn.style.transform = 'translate(0px, 0px)';
+    }, 700);
+    returnTimers.set(btn, t);
   }
 
-  dodgeZone.querySelectorAll('.dodge-btn').forEach(btn => {
+  scale.querySelectorAll('.score-btn.dodge').forEach(btn => {
     btn.addEventListener('mouseenter', () => dodge(btn));
     btn.addEventListener('touchstart', (e) => { e.preventDefault(); dodge(btn); }, { passive: false });
     btn.addEventListener('click', (e) => { e.preventDefault(); dodge(btn); });
   });
-
-  window.addEventListener('resize', placeInitial);
-  placeInitial();
 
   onSnapshot(doc(db, 'settings', 'reviewStats'), (snap) => {
     const count = snap.exists() && typeof snap.data().count === 'number' ? snap.data().count : 0;
     countBadge.textContent = `지금까지 ${count}명이 참여했어요`;
   });
 
-  document.querySelectorAll('.fixed-btn').forEach(btn => {
+  scale.querySelectorAll('.score-btn.accept').forEach(btn => {
     btn.addEventListener('click', async () => {
       const score = Number(btn.dataset.score);
-      document.querySelectorAll('.fixed-btn').forEach(b => b.disabled = true);
+      scale.querySelectorAll('.score-btn.accept').forEach(b => b.disabled = true);
 
       try {
         await addDoc(collection(db, 'reviews'), {
